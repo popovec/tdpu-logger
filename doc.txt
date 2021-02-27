@@ -1,0 +1,135 @@
+# tpdu-logger
+
+Tool for capture card - card reader communiction
+
+*************************************************************************
+## Hardware
+
+Xmega128A4U is connected to card reader:
+
++-------------------+
+|   xmega128A4U     |
+|                   +-------< voltage regulator 3.3 V
+| C    C    C    C  |
+| 0    2    7    3  +-------< GND
++-+----+----+----+--+
+  |    |    |    |
+ -+-  -+-  -+-   +--< debug to USB serial converter 921.6kbaud
+ | |  | |  | |
+ | |  | |  | |
+ | |  | |  | |  <---------------  3x 1kOhm resistor
+ -+-  -+-  -+-
+  |    |    |
+ I/O  CLK  RST
+
+*************************************************************************
+
+Device is able to determine correct baud rate from ATR and PPS exchange.
+Specific mode is supported too.
+
+Guard time (TC1) is partially supported.
+
+For now no support for CWT and BWT.
+
+Error signalig (protocol T0) is handled, but this code is untested.
+
+Disclaimer
+~~~~~~~~~~
+
+Whole project is published in good faith and is to be used for educational
+purposes only.
+
+AUTHOR IS NOT RESPONSIBLE FOR ANY DAMAGE OF CARD, CARD READERS, COMPUTER
+EQUIPMENTS OR DATA LOSS/DATA LEAKAGE! USE AT YOUR OWN RISK ONLY!
+
+```
+Examples (serial debug output)
+==============================
+
+Note: this is log from development version, newer versions of the log format may be
+      slightly different.
+
+Note: Clock cycles are counted for both edges .. normal ETU 372 then generates 744
+      clock cycles
+
+OsEID card, specific mode protocol T0
+====================================
+>OK
+X
+ f5 18 00 02 10 80 4f 73 45 49 44	// ATR (without 3b/3f)
+
+ 01  08 c3			// one byte level, 2 bytes: clock cycles from RST to start bit
+ 00  02 e8			// one byte level, 2 bytes: clock cycles for ATR TS start bit
+ 01  05 cb			// one byte level, 2 bytes: clock cycles for two bits (H) of TS
+ 00  02 e7			// one byte level, 2 bytes: xlock cycles (L level) (one or six bit)
+ 00  02 e7			// 00/ff direction, 16 bit - recalculated clock cycles for one ETU
+
+> 00 a4 00 00 02		// APDU header
+> a4				// procedure byte
+> 3f 00				// APDU data
+> 61 19				// SW1,SW2 from card
+
+
+OsEID card, negotiable mode protocol T0
+=======================================
+OK
+X
+ d5 96 02 80 31 14 95 4f 73 45 49 44 05
+
+ 01  24 ae
+ 00  02 e6
+ 01  05 ce
+ 00  02 e7
+ 00  02 e7
+> ff 10 95 7a
+> ff 10 95 7a
+> 00 a4 00 00 02
+> a4
+> 3f 00
+> 61 19
+> 00 c0 00 00 19
+> c0 6f 17 81 02 7f ff 82 01 38 83 02 3f 00 86 03 11 3f ff 85 02 00 02 8a 01 07 90 00
+
+Note: c0 is procedure byte, then response bytes
+
+
+OsEID card, negotiable mode protocol T1
+=======================================
+>OK
+X
+ d5 96 02 80 31 14 95 4f 73 45 49 44 05
+
+ 01  24 a4
+ 00  02 e8
+ 01  05 cc
+ 00  02 e8
+ 00  02 e7
+> ff 11 95 7b
+> ff 11 95 7b
+> 00 c1 01 f8 38
+> 00 e1 01 f8 18
+> 00 00 07 00 a4 00 00 02 3f 00 9e
+> 00 20 02 90 00 b2
+> 00 90 00 90
+> 00 40 00 40
+
+Note: this is T1 transport, read ISO7816-3 chapter 11.
+
+VISA card protocol T1
+=====================
+>OK
+X
+ e9 00 00 81 21 45 56 49 53 5f 49 4e 46 20 06 78
+
+ 01  d1 ef
+ 00  02 e8
+ 01  05 cd
+ 00  02 e6
+ 00  02 e7
+> 00 c1 01 f8 38
+> 00 e1 01 f8 18
+> 00 00 07 00 a4 00 00 02 3f 00 9e
+> 00 00 02 67 00 65
+> 00 40 05 00 a4 00 00 00 e1
+> 00 40 02 90 00 d2
+```
